@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gender Bet</title>
+    <!-- Carga de Tailwind CSS para estilos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Importación de fuentes */
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;700;900&display=swap');
+        
+        .font-title {
+            font-family: 'Dancing Script', cursive;
+        }
+        .font-sans {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Estilos base de la tarjeta */
+        .vote-card {
+            max-width: 450px;
+            width: 95%;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Colores de género */
+        .color-pink { background-color: #fce7f3; color: #db2777; }
+        .color-blue { background-color: #ebf8ff; color: #2563eb; }
+        .progress-pink { background-color: #ec4899; }
+        .progress-blue { background-color: #3b82f6; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 bg-gray-50 font-sans">
+
+    <!-- Tarjeta Principal de Votación -->
+    <div class="vote-card bg-white p-6 sm:p-8 mt-12 mb-8">
+        <h1 class="font-title text-4xl sm:text-5xl text-gray-900 text-center mb-2">
+            La Gran Apuesta
+        </h1>
+        <p class="text-gray-600 text-center mb-6">
+            ¡Haz tu pronóstico! Solo puedes votar una vez. 
+        </p>
+
+        <!-- Controles de Votación -->
+        <div id="vote-controls" class="flex justify-around space-x-4 mb-8">
+            <button id="vote-nina" data-gender="Niña" 
+                    class="flex-1 py-4 text-xl font-bold rounded-xl transition duration-300 ease-in-out transform hover:scale-105 color-pink hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-pink-300">
+                <span class="text-pink-700">Niña</span>
+            </button>
+            <button id="vote-nino" data-gender="Niño" 
+                    class="flex-1 py-4 text-xl font-bold rounded-xl transition duration-300 ease-in-out transform hover:scale-105 color-blue hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300">
+                <span class="text-blue-700">Niño</span>
+            </button>
+        </div>
+
+        <!-- Resultados en Tiempo Real -->
+        <div id="results-section" class="space-y-6">
+            <h2 class="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
+                Resultados de la Comunidad
+            </h2>
+
+            <!-- Bar NINA -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-lg font-bold text-pink-600">Niña</span>
+                    <span id="count-nina" class="text-lg font-extrabold text-pink-600">0</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div id="bar-nina" class="progress-pink h-4 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                </div>
+                <p id="percent-nina" class="text-sm text-pink-600 font-medium text-right mt-1">0%</p>
+            </div>
+
+            <!-- Bar NIÑO -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-lg font-bold text-blue-600">Niño</span>
+                    <span id="count-nino" class="text-lg font-extrabold text-blue-600">0</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div id="bar-nino" class="progress-blue h-4 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                </div>
+                <p id="percent-nino" class="text-sm text-blue-600 font-medium text-right mt-1">0%</p>
+            </div>
+            
+            <p id="user-vote-status" class="text-center pt-4 text-lg font-semibold text-gray-700">
+                Selecciona una opción para votar.
+            </p>
+            <p id="loading-status" class="text-center text-sm text-gray-400">
+                Zadhid Edition.
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // --- Variables de estado de la aplicación (almacenamiento local) ---
+        let votes = {
+            'Niña': 0,
+            'Niño': 0
+        };
+        let userVote = null; // Almacena el voto del usuario actual: 'Niña', 'Niño' o null
+
+        // --- Funciones de la UI ---
+
+        /**
+         * Actualiza la interfaz de usuario con los conteos y porcentajes actuales.
+         */
+        function updateResultsUI() {
+            const countNina = votes['Niña'];
+            const countNino = votes['Niño'];
+            const total = countNina + countNino;
+
+            // Calcular porcentajes
+            const percentNina = total > 0 ? (countNina / total) * 100 : 0;
+            const percentNino = total > 0 ? (countNino / total) * 100 : 0;
+            
+            // Actualizar textos de conteo
+            document.getElementById('count-nina').textContent = countNina;
+            document.getElementById('count-nino').textContent = countNino;
+            
+            // Actualizar barras de progreso (animación CSS)
+            document.getElementById('bar-nina').style.width = `${percentNina}%`;
+            document.getElementById('bar-nino').style.width = `${percentNino}%`;
+
+            // Actualizar textos de porcentaje
+            document.getElementById('percent-nina').textContent = `${Math.round(percentNina)}%`;
+            document.getElementById('percent-nino').textContent = `${Math.round(percentNino)}%`;
+
+            // Actualizar estado del voto del usuario
+            updateUserVoteStatus();
+        }
+
+        /**
+         * Muestra un mensaje al usuario basado en su voto actual.
+         */
+        function updateUserVoteStatus() {
+            const statusElement = document.getElementById('user-vote-status');
+            
+            if (userVote) {
+                // Si ya votó, muestra su voto
+                statusElement.innerHTML = `¡Gracias! Tu pronóstico es: <span class="${userVote === 'Niña' ? 'text-pink-600' : 'text-blue-600'} </span>${userVote}"> ${userVote} </span>`;
+                statusElement.classList.remove('text-gray-700');
+                statusElement.classList.add('text-green-700');
+            } else {
+                // Si no ha votado
+                statusElement.textContent = 'Selecciona una opción para votar.';
+                statusElement.classList.remove('text-green-700');
+                statusElement.classList.add('text-gray-700');
+            }
+        }
+
+        /**
+         * Maneja la lógica de votación y actualización de conteos.
+         * @param {string} newVote - El género al que se votó ('Niña' o 'Niño').
+         */
+        function handleVote(newVote) {
+            // Deshabilitar botones para evitar clics dobles rápidos
+            const ninaBtn = document.getElementById('vote-nina');
+            const ninoBtn = document.getElementById('vote-nino');
+            ninaBtn.disabled = true;
+            ninoBtn.disabled = true;
+
+            // 1. Manejar cambio de voto (si el usuario ya había votado)
+            if (userVote && userVote !== newVote) {
+                // Descontar el voto anterior
+                votes[userVote] = Math.max(0, votes[userVote] - 1);
+            }
+            
+            // 2. Si es un voto nuevo O un cambio de voto
+            if (userVote !== newVote) {
+                // Incrementar el nuevo voto
+                votes[newVote] += 1;
+                // Actualizar el estado del usuario
+                userVote = newVote;
+            }
+
+            // 3. Actualizar la UI
+            updateResultsUI();
+
+            // 4. Volver a habilitar botones (después de un pequeño delay para la animación)
+            setTimeout(() => {
+                ninaBtn.disabled = false;
+                ninoBtn.disabled = false;
+            }, 300);
+        }
+
+        // --- Configuración de Eventos al cargar la página ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicializar la UI con los valores de votos (0, 0)
+            updateResultsUI();
+
+            // Añadir listeners a los botones de votación
+            document.getElementById('vote-nina').addEventListener('click', (e) => {
+                handleVote(e.currentTarget.dataset.gender);
+            });
+
+            document.getElementById('vote-nino').addEventListener('click', (e) => {
+                handleVote(e.currentTarget.dataset.gender);
+            });
+        });
+
+    </script>
+</body>
+</html>
